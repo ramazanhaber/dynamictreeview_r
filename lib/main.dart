@@ -172,8 +172,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   EdgeInsets.only(left: 16, top: 0, bottom: 0)),
 
               onTap: (m) {
-                mesajYaz(m["title"].toString());
+                // mesajYaz(m["title"].toString());
               },
+
               width: 300,
             )
           ],

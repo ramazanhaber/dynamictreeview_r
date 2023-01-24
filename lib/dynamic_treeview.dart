@@ -1,4 +1,9 @@
+import 'dart:html';
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import 'rightclickmodel.dart';
 
 ///Callback when child/parent is tapped . Map data will contain {String 'id',String 'parent_id',String 'title',Map 'extra'}
 
@@ -19,6 +24,7 @@ class DynamicTreeView extends StatefulWidget {
 
   ///Configuration object for [DynamicTreeView]
   final Config config;
+
   DynamicTreeView({
     required this.data,
     this.config = const Config(),
@@ -39,6 +45,9 @@ class _DynamicTreeViewOriState extends State<DynamicTreeView> {
     _buildTreeView();
     _childTapListener.addListener(childTapListener);
     super.initState();
+
+    document.onContextMenu.listen((event) => event.preventDefault());
+
   }
 
   void childTapListener() {
@@ -58,11 +67,11 @@ class _DynamicTreeViewOriState extends State<DynamicTreeView> {
   _buildTreeView() {
     var k = widget.data
         .where((data) {
-      return data.getParentId() == widget.config.rootId;
-    })
+          return data.getParentId() == widget.config.rootId;
+        })
         .map((data) {
-      return data.getId();
-    })
+          return data.getId();
+        })
         .toSet()
         .toList()
       ..sort((i, j) => i.compareTo(j));
@@ -80,7 +89,7 @@ class _DynamicTreeViewOriState extends State<DynamicTreeView> {
   ParentWidget buildWidget(String parentId, String name) {
     var data = _getChildrenFromParent(parentId);
     BaseData d =
-    widget.data.firstWhere((d) => d.getId() == parentId.toString());
+        widget.data.firstWhere((d) => d.getId() == parentId.toString());
     if (name == null) {
       name = d.getTitle();
     }
@@ -100,6 +109,14 @@ class _DynamicTreeViewOriState extends State<DynamicTreeView> {
     return p;
   }
 
+
+  void mesajYaz(String mesaj){
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 1),
+      content: Text(mesaj),
+    ));
+
+  }
   _buildChildren(List<BaseData> data) {
     var cW = <Widget>[];
     for (var k in data) {
@@ -111,19 +128,26 @@ class _DynamicTreeViewOriState extends State<DynamicTreeView> {
             .getTitle();
         cW.add(buildWidget(k.getId(), name));
       } else {
-        cW.add(ListTile(
-          onTap: () {
-            widget?.onTap({
-              'id': '${k.getId()}',
-              'parent_id': '${k.getParentId()}',
-              'title': '${k.getTitle()}',
-              'extra': '${k.getExtraData()}'
-            });
+        cW.add(Listener(
+          onPointerDown: (PointerDownEvent details) {
+            RightClickModel model = new RightClickModel(context);
+            model.onPointerDown(details,k);
+
           },
-          contentPadding: widget.config.childrenPaddingEdgeInsets,
-          title: Text(
-            "${k.getTitle()}",
-            style: widget.config.childrenTextStyle,
+          child: ListTile(
+            onTap: () {
+              widget?.onTap({
+                'id': '${k.getId()}',
+                'parent_id': '${k.getParentId()}',
+                'title': '${k.getTitle()}',
+                'extra': '${k.getExtraData()}'
+              });
+            },
+            contentPadding: widget.config.childrenPaddingEdgeInsets,
+            title: Text(
+              "${k.getTitle()} **",
+              style: widget.config.childrenTextStyle,
+            ),
           ),
         ));
       }
@@ -141,19 +165,19 @@ class _DynamicTreeViewOriState extends State<DynamicTreeView> {
   Widget build(BuildContext context) {
     return treeView != null
         ? SingleChildScrollView(
-      child: Container(
-        width: widget.width,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: treeView,
-          ),
-          physics: BouncingScrollPhysics(),
-        ),
-      ),
-      scrollDirection: Axis.horizontal,
-      physics: BouncingScrollPhysics(),
-    )
+            child: Container(
+              width: widget.width,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: treeView,
+                ),
+                physics: BouncingScrollPhysics(),
+              ),
+            ),
+            scrollDirection: Axis.horizontal,
+            physics: BouncingScrollPhysics(),
+          )
         : Container();
   }
 }
@@ -162,7 +186,11 @@ class ChildWidget extends StatefulWidget {
   final List<Widget> children;
   final bool shouldExpand;
   final Config config;
-  ChildWidget({required this.children, required this.config, this.shouldExpand = false});
+
+  ChildWidget(
+      {required this.children,
+      required this.config,
+      this.shouldExpand = false});
 
   @override
   _ChildWidgetState createState() => _ChildWidgetState();
@@ -199,7 +227,7 @@ class _ChildWidgetState extends State<ChildWidget>
     expandController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 300));
     Animation<double> curve =
-    CurvedAnimation(parent: expandController, curve: Curves.fastOutSlowIn);
+        CurvedAnimation(parent: expandController, curve: Curves.fastOutSlowIn);
 
     sizeAnimation = Tween(begin: 0.0, end: 1.0).animate(curve)
       ..addListener(() {
@@ -236,6 +264,7 @@ class ParentWidget extends StatefulWidget {
   final BaseData baseData;
   final Config config;
   final OnTap onTap;
+
   ParentWidget({
     required this.baseData,
     required this.onTap,
@@ -264,13 +293,15 @@ class _ParentWidgetState extends State<ParentWidget>
   void initState() {
     prepareAnimation();
     super.initState();
+
+    document.onContextMenu.listen((event) => event.preventDefault());
   }
 
   void prepareAnimation() {
     expandController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 300));
     Animation<double> curve =
-    CurvedAnimation(parent: expandController, curve: Curves.fastOutSlowIn);
+        CurvedAnimation(parent: expandController, curve: Curves.fastOutSlowIn);
 
     sizeAnimation = Tween(begin: 0.0, end: 0.5).animate(curve)
       ..addListener(() {
@@ -278,37 +309,61 @@ class _ParentWidgetState extends State<ParentWidget>
       });
   }
 
+  void acKapa() {
+    setState(() {
+      shouldExpand = !shouldExpand;
+    });
+    if (shouldExpand) {
+      expandController.forward();
+    } else {
+      expandController.reverse();
+    }
+  }
+
+  /// Callback when mouse clicked on `Listener` wrapped widget.
+
+
+
+  void mesajYaz(String mesaj){
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 1),
+      content: Text(mesaj),
+    ));
+
+  }
+  late PointerDownEvent lastEvent;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        ListTile(
-          onTap: () {
-            var map = Map<String, dynamic>();
-            map['id'] = widget.baseData.getId();
-            map['parent_id'] = widget.baseData.getParentId();
-            map['title'] = widget.baseData.getTitle();
-            map['extra'] = widget.baseData.getExtraData();
-            if (widget.onTap != null) widget.onTap(map);
+        Listener(
+          onPointerDown: (PointerDownEvent details) {
+            RightClickModel model = new RightClickModel(context);
+            model.onPointerDown(details,widget.baseData);
           },
-          title: Text(widget.baseData.getTitle(),
-              style: widget.config.parentTextStyle),
-          contentPadding: widget.config.parentPaddingEdgeInsets,
-          trailing: IconButton(
-            onPressed: () {
-              setState(() {
-                shouldExpand = !shouldExpand;
-              });
-              if (shouldExpand) {
-                expandController.forward();
-              } else {
-                expandController.reverse();
-              }
+          child: ListTile(
+            onTap: () {
+              acKapa();
+              var map = Map<String, dynamic>();
+              map['id'] = widget.baseData.getId();
+              map['parent_id'] = widget.baseData.getParentId();
+              map['title'] = widget.baseData.getTitle();
+              map['extra'] = widget.baseData.getExtraData();
+              if (widget.onTap != null) widget.onTap(map);
             },
-            icon: RotationTransition(
-              turns: sizeAnimation,
-              child: widget.config.arrowIcon,
+            title: Text(widget.baseData.getTitle(),
+                style: widget.config.parentTextStyle),
+            contentPadding: widget.config.parentPaddingEdgeInsets,
+            trailing: IconButton(
+              onPressed: () {
+                acKapa();
+              },
+              icon: RotationTransition(
+                turns: sizeAnimation,
+                child: widget.config.arrowIcon,
+              ),
             ),
           ),
         ),
@@ -376,11 +431,11 @@ class Config {
 
   const Config(
       {this.parentTextStyle =
-      const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-        this.parentPaddingEdgeInsets = const EdgeInsets.all(6.0),
-        this.childrenTextStyle = const TextStyle(color: Colors.black),
-        this.childrenPaddingEdgeInsets =
-        const EdgeInsets.only(left: 15.0, top: 0, bottom: 0),
-        this.rootId = "1",
-        this.arrowIcon = const Icon(Icons.keyboard_arrow_down)});
+          const TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+      this.parentPaddingEdgeInsets = const EdgeInsets.all(6.0),
+      this.childrenTextStyle = const TextStyle(color: Colors.black),
+      this.childrenPaddingEdgeInsets =
+          const EdgeInsets.only(left: 15.0, top: 0, bottom: 0),
+      this.rootId = "1",
+      this.arrowIcon = const Icon(Icons.keyboard_arrow_down)});
 }
