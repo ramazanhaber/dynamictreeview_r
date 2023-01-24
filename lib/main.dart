@@ -160,17 +160,21 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           children: <Widget>[
             DynamicTreeView(
+
               data: getData(), // pass here List<BaseModel>
               config: Config(
                   parentTextStyle:
                   TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+
                   rootId: "1",
+
                   parentPaddingEdgeInsets:
                   EdgeInsets.only(left: 16, top: 0, bottom: 0)),
+
               onTap: (m) {
                 mesajYaz(m["title"].toString());
               },
-              width: MediaQuery.of(context).size.width,
+              width: 300,
             )
           ],
         ),
